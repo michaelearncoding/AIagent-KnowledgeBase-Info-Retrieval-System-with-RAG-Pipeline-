@@ -11,6 +11,9 @@ The code could run into a bug due to deprecated function/API methods. OpenAI API
 
 2. create a .env file in the local for testing - generated from the openai web ui, please dont share your secret to the public places
 
+3. app.py is a staging version for testing if there is any change for the current openai api method
+
+4. main.py is a production version that ready to use the web ui to do the information retrieval
 
 ## Prompt for OpenAI Assistant
 
