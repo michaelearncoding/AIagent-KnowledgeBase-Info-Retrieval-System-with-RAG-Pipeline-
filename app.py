@@ -4,16 +4,32 @@ from openai import OpenAI
 import time
 import logging
 import streamlit as st
+import jsonlines
+from PyPDF2 import PdfReader
+
 
 def load_environment():
     import os
     load_dotenv()
 
+# Only needed when it's a batch query
+''' 
+The OpenAI API provides the ability to stream responses back to a client in order to allow partial results for certain requests. To achieve this, we follow the Server-sent events standard. Our official Node and Python libraries include helpers to make parsing these events simpler.
+'''
+def upload_file_to_openai(filepath,client, token):
+    import requests
+    url = "https://api.openai.com/v1/files"
+    headers = {
+        "Authorization": f"Bearer {token}",
+    }
+    files = {
+        "file": (os.path.basename(filepath), open(filepath, "rb")),
+        "purpose": (None, "fine-tune")
+    }
+    response = requests.post(url, headers=headers, files=files)
+    response.raise_for_status()  # Raise an error for bad status codes
+    return response.json()
 
-def upload_file_to_openai(filepath, client):
-    with open(filepath, "rb") as file:
-        response = client.files.create(file=file, purpose="fine-tune")
-    return response
 
 
 def create_assistant(model, file_id, client):
@@ -73,8 +89,10 @@ def main():
 
     # Step 1: Upload a file to OpenAI embeddings
     filepath = "./FakeDomainDocumentation/Speaking_Band_Descriptors.pdf"
-    # file_object
-    # upload_file_to_openai(filepath,client)
+    client.files.create(file=open(filepath, "rb"), purpose="assistants")
+    # only needed when it's a streaming fine-tune api
+    # token =os.getenv("OPENAI_API_KEY")
+    # upload_file_to_openai(filepath,client, token)
 
     # Hardcoded IDs (replace with actual IDs if needed)
     thread_id = "thread_Qt4TBUJcPI1UMsi9uHRyFakh"
@@ -93,5 +111,23 @@ def main():
             print(chunk.choices[0].delta.content, end="")
     # ref: https://platform.openai.com/docs/api-reference/streaming
 
+
+def pdf_to_jsonl(pdf_filepath, jsonl_filepath):
+    with open(pdf_filepath, "rb") as pdf_file:
+        reader = PdfReader(pdf_file)
+        num_pages = len(reader.pages)
+        with jsonlines.open(jsonl_filepath, mode='w') as writer:
+            for page_num in range(num_pages):
+                page = reader.pages[page_num]
+                text = page.extract_text()
+                writer.write({"text": text})
+
 if __name__ == "__main__":
+
+    # Convert PDF to JSONL if the streaming is needed
+    # pdf_filepath = "./FakeDomainDocumentation/Speaking_Band_Descriptors.pdf"
+    # jsonl_filepath = "./FakeDomainDocumentation/Speaking_Band_Descriptors.jsonl"
+    # pdf_to_jsonl(pdf_filepath, jsonl_filepath)
+    # print(f"Converted {pdf_filepath} to {jsonl_filepath}")
+
     main()
