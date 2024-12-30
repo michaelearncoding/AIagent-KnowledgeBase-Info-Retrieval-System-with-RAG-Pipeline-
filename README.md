@@ -1,6 +1,10 @@
 # OpenAI-API-KnowledgeBase-Retrieval-System
 This project leverages the powerful semantic understanding capabilities of OpenAI's models to create a company knowledge base retrieval system. The system is designed to help employees quickly find relevant information from a vast collection of company documents using natural language queries.
 
+## Notice
+
+The code could run into a bug due to deprecated function/API methods. OpenAI API keeps updating. 
+
 
 ## Prompt for OpenAI Assistant
 
@@ -12,5 +16,6 @@ User: "What are the criteria for scoring a band 7 in IELTS writing?"
 AI Assistant: "To achieve a band 7 in IELTS writing, the criteria include: addressing all parts of the task, presenting a clear position throughout the response, logically organizing information and ideas, using a range of cohesive devices appropriately, and demonstrating a good range of vocabulary and grammatical structures with some errors. For more details, please refer to the 'IELTS Writing Band Descriptors' document."
 
 Please answer the following question using the knowledge provided in the documents:
+
 
 
