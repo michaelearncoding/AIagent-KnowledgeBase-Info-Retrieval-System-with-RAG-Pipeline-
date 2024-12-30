@@ -15,12 +15,6 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 model = "gpt-3.5-turbo"
 
-
-# == Hardcoded ids to be used once the first code run is done and the assistant was created
-# These IDs are created after inputting the information in the OpenAI platform Web UI
-thread_id = "thread_Qt4TBUJcPI1UMsi9uHRyFakh" 
-assis_id = "asst_ounYgNZxDByhLFqfmQsb0UJd"
-
 # Initialize all the session
 if "file_id_list" not in st.session_state:
     st.session_state.file_id_list = []
@@ -34,6 +28,8 @@ if "vector_store_id_list" not in st.session_state:
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = None
 
+if "assistant_id" not in st.session_state:
+    st.session_state.assistant_id = None
 
 # Set up our front end page
 st.set_page_config(page_title="Study Buddy - Chat and Learn", page_icon=":books:")
@@ -91,8 +87,9 @@ if st.sidebar.button("Upload File"):
                 }
             }
         )
-        assis_id = assistant.id
-        st.write("Assistant ID:", assis_id)
+        assis_id = assistant.id # get the assistant ID
+        st.session_state.assistant_id = assistant.id
+        st.write("Assistant ID:", st.session_state.assistant_id)
 
 
 # Display those file ids
@@ -117,41 +114,59 @@ if st.sidebar.button("Start Chatting..."):
 
 
 # Define the function to process messages with citations
-def process_message_with_citations(message):
+def process_message_with_citations(message, filename):
     """Extract content and annotations from the message and format citations as footnotes."""
-    message_content = message.content[0].text
-    annotations = (
-        message_content.annotations if hasattr(message_content, "annotations") else []
-    )
+    message_content = message.content[0].text.value
+    # message_content = message.content[0].text
+    # annotations = (
+    #     message_content.annotations if hasattr(message_content, "annotations") else []
+    # )
+    # annotations = message_content.annotations if hasattr(message_content, "annotations") else []
+    annotations = message.content[0].text.annotations if hasattr(message.content[0].text, "annotations") else []
+
     citations = []
 
     # Iterate over the annotations and add footnotes
     for index, annotation in enumerate(annotations):
         # Replace the text with a footnote
-        message_content.value = message_content.value.replace(
-            annotation.text, f" [{index + 1}]"
-        )
-
+        # message_content.value = message_content.value.replace(
+        #     annotation.text, f" [{index + 1}]"
+        # )
+        # message_content = message_content.replace(annotation['text'], f" [{index + 1}]")
+        message_content = message_content.replace(annotation.text, f" [{index + 1}]")
+        # # Gather citations based on annotation attributes
+        # if file_citation := getattr(annotation, "file_citation", None):
+        #     # Retrieve the cited file details (dummy response here since we can't call OpenAI)
+        #     cited_file = {
+        #         "filename": "Speaking_Band_Descriptors.pdf"
+        #     }  # This should be replaced with actual file retrieval
+        #     citations.append(
+        #         f'[{index + 1}] {file_citation.quote} from {cited_file["filename"]}'
+        #     )
+        # elif file_path := getattr(annotation, "file_path", None):
+        #     # Placeholder for file download citation
+        #     cited_file = {
+        #         "filename": "Speaking_Band_Descriptors.pdf"
+        #     }  # TODO: This should be replaced with actual file retrieval
+        #     citations.append(
+        #         f'[{index + 1}] Click [here](#) to download {cited_file["filename"]}'
+        #     )  # The download link should be replaced with the actual download path
+            
         # Gather citations based on annotation attributes
-        if file_citation := getattr(annotation, "file_citation", None):
-            # Retrieve the cited file details (dummy response here since we can't call OpenAI)
-            cited_file = {
-                "filename": "cryptocurrency.pdf"
-            }  # This should be replaced with actual file retrieval
-            citations.append(
-                f'[{index + 1}] {file_citation.quote} from {cited_file["filename"]}'
-            )
-        elif file_path := getattr(annotation, "file_path", None):
+        if 'file_citation' in annotation:
+            file_citation = annotation['file_citation']
+            # Retrieve the cited file details
+            cited_file = client.files.retrieve(file_citation['file_id'])
+            quote = file_citation.get('quote', "No quote available")
+            citations.append(f'[{index + 1}] {quote} from {cited_file.filename}')
+        elif 'file_path' in annotation:
+            file_path = annotation['file_path']
             # Placeholder for file download citation
-            cited_file = {
-                "filename": "cryptocurrency.pdf"
-            }  # TODO: This should be replaced with actual file retrieval
-            citations.append(
-                f'[{index + 1}] Click [here](#) to download {cited_file["filename"]}'
-            )  # The download link should be replaced with the actual download path
+            cited_file = client.files.retrieve(file_path['file_id'])
+            citations.append(f'[{index + 1}] Click [here](#) to download {cited_file.filename}')
 
     # Add footnotes to the end of the message content
-    full_response = message_content.value + "\n\n" + "\n".join(citations)
+    full_response = message_content + "\n\n" + "\n".join(citations)
     return full_response
 
 
@@ -187,15 +202,19 @@ if st.session_state.start_chat:
         # Create a run with additioal instructions
         run = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
-            assistant_id=assis_id,
+            assistant_id= st.session_state.assistant_id, # assistant.id, assis_id
             instructions="""Please answer the questions using the knowledge provided in the files.
             when adding additional information, make sure to distinguish it with bold or underlined text.""",
         )
-
+# None streaming response method
         # Show a spinner while the assistant is thinking...
         with st.spinner("Wait... Generating response..."):
             while run.status != "completed":
                 time.sleep(1)
+                # the response retrieve method here is actually against the streamming return methods
+                # because it will wait until the response is completed
+                # The way to go is to use the stream method to get the response in chunks
+                # Rather than waiting for the response to be completed
                 run = client.beta.threads.runs.retrieve(
                     thread_id=st.session_state.thread_id, run_id=run.id
                 )
@@ -203,7 +222,7 @@ if st.session_state.start_chat:
             messages = client.beta.threads.messages.list(
                 thread_id=st.session_state.thread_id
             )
-            # Process and display assis messages
+            # Process and display assis messages - filler the messages by run_id and role
             assistant_messages_for_run = [
                 message
                 for message in messages
@@ -211,12 +230,56 @@ if st.session_state.start_chat:
             ]
 
             for message in assistant_messages_for_run:
-                full_response = process_message_with_citations(message=message)
+                full_response = process_message_with_citations(message=message, filename=file_uploaded.name)
                 st.session_state.messages.append(
                     {"role": "assistant", "content": full_response}
                 )
                 with st.chat_message("assistant"):
                     st.markdown(full_response, unsafe_allow_html=True)
+
+# Streaming the response methods:
+        # Initialize response_text
+        # response_text = ""
+            # Create a run with additional instructions
+        # run = client.beta.threads.runs.create(
+        #     thread_id=st.session_state.thread_id,
+        #     assistant_id=st.session_state.assistant_id,  # assis_id,assistant.id
+        #     instructions="""Please answer the questions using the knowledge provided in the files.
+        #     when adding additional information, make sure to distinguish it with bold or underlined text.""",
+        #     stream=True  # use the stream response method
+        # )
+        # Create a streaming request
+        # stream = client.chat.completions.create(
+        #     model="gpt-4o",
+        #     messages=[{"role": "user", "content": prompt}],
+        #     stream=True,
+        # )
+        # # Show a spinner while the assistant is thinking...
+        # with st.spinner("Wait... Generating response..."):
+        #     for chunk in stream:
+        #         if chunk.choices[0].delta.content is not None:
+        #             response_text += chunk.choices[0].delta.content
+        #             st.write(response_text)
+        # # Retrieve messages added by the assistant
+        # messages = client.beta.threads.messages.list(
+        #     thread_id=st.session_state.thread_id
+        # )
+        # # Process and display assistant messages
+        # assistant_messages_for_run = [
+        #     message
+        #     for message in messages
+        #     if message.role == "assistant"
+        # ]
+        # for message in assistant_messages_for_run:
+        #     full_response = process_message_with_citations(message=message, filename=file_uploaded.name)
+        #     st.session_state.messages.append(
+        #         {"role": "assistant", "content": full_response}
+        #     )
+        #     with st.chat_message("assistant"):
+        #         st.markdown(full_response, unsafe_allow_html=True)
+
+
+
 
     else:
         # Promopt users to start chat
