@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 import requests
 import json
 
@@ -12,7 +12,7 @@ import streamlit as st
 
 load_dotenv()
 
-client = openai.OpenAI()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 model = "gpt-3.5-turbo"
 
 
@@ -27,6 +27,9 @@ if "file_id_list" not in st.session_state:
 
 if "start_chat" not in st.session_state:
     st.session_state.start_chat = False
+
+if "vector_store_id_list" not in st.session_state:
+    st.session_state.vector_store_id_list = []
 
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = None
@@ -43,10 +46,22 @@ def upload_to_openai(filepath):
     return response.id
 
 
+def create_vector_store_file(filepath):
+    # Create a vector store called "IELTS Documents"
+    vector_store = client.beta.vector_stores.create(name="IELTS Documents")
+
+    # Ensure filepath is a single file path string
+    with open(filepath, "rb") as file_stream:
+        file_batch = client.beta.vector_stores.file_batches.upload_and_poll(
+            vector_store_id=vector_store.id, files=[file_stream]
+        )
+    return vector_store.id
+
 # === Sidebar - where users can upload files
 file_uploaded = st.sidebar.file_uploader(
     "Upload a file to be transformed into embeddings", key="file_upload"
 )
+
 
 # Upload file button - store the file ID
 if st.sidebar.button("Upload File"):
@@ -57,15 +72,34 @@ if st.sidebar.button("Upload File"):
         st.session_state.file_id_list.append(another_file_id)
         st.sidebar.write(f"File ID:: {another_file_id}")
 
+        
+        # 将文件转换为向量存储，并获取向量存储ID
+        vector_store_id = create_vector_store_file(f"{file_uploaded.name}")
+        st.session_state.vector_store_id_list.append(vector_store_id)
+        st.sidebar.write(f"Vector Store ID:: {vector_store_id}")
+
+
+        # apply file_search tool assistant
+        assistant = client.beta.assistants.create(
+            name="Document Reader",
+            description="You are great at reading the extra document. You analyze content in this file to understand knowledge, and come up with relevant to those trends. You also share a brief text summary of the trends observed.",
+            model="gpt-4o",
+            tools=[{"type": "file_search"}],
+            tool_resources={
+                "file_search": {
+                    "vector_store_ids": [vector_store_id]
+                }
+            }
+        )
+        assis_id = assistant.id
+        st.write("Assistant ID:", assis_id)
+
+
 # Display those file ids
 if st.session_state.file_id_list:
     st.sidebar.write("Uploaded File IDs:")
     for file_id in st.session_state.file_id_list:
         st.sidebar.write(file_id)
-        # Associate each file id with the current assistant
-        assistant_file = client.beta.assistants.files.create(
-            assistant_id=assis_id, file_id=file_id
-        )
 
 # Button to initiate the chat session
 if st.sidebar.button("Start Chatting..."):
