@@ -92,8 +92,10 @@ def main():
     thread_id = "thread_Qt4TBUJcPI1UMsi9uHRyFakh"
     assis_id = "asst_ounYgNZxDByhLFqfmQsb0UJd"
 
-    # Run the assistant
-    run = run_assistant(client, thread_id, assis_id, "Please address the user as Bruce")
+    # Run the assistant with a specific instruction
+    question = "What are the criteria for scoring a band 7 in IELTS speaking?"
+    instructions = f"Please answer the following question: {question}"
+    run = run_assistant(client, thread_id, assis_id, instructions)
     wait_for_run_completion(client, thread_id, run.id)
 
     # Check the run steps - logs
