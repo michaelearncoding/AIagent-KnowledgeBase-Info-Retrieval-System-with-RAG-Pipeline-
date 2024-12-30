@@ -5,6 +5,12 @@ This project leverages the powerful semantic understanding capabilities of OpenA
 
 The code could run into a bug due to deprecated function/API methods. OpenAI API keeps updating. 
 
+## How to setup
+
+1. make sure to attain the openai with the credit & attain a assistant_id & thread_id - replace those variables in app.py file
+
+2. create a .env file in the local for testing - generated from the openai web ui, please dont share your secret to the public places
+
 
 ## Prompt for OpenAI Assistant
 
