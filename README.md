@@ -3,6 +3,8 @@ This project leverages the powerful semantic understanding capabilities of OpenA
 
 While openai api streamline the process of building a AI-supoorted application. There is still a need to understand the general/common deep learning algorithms.
 
+In this repo, I also utilize LangChain to build/develop some ai agent... 
+
 ## Notice
 
 The code could run into a bug due to deprecated function/API methods. OpenAI API keeps updating. 
