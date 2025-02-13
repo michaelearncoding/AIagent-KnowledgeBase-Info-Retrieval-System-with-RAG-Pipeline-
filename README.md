@@ -1,9 +1,40 @@
-# AI agent-KnowledgeBase-Info-Retrieval-System with RAG Pipeline
+# AI agent-KnowledgeBase-Info-Retrieval-System with RAG Pipeline (RAG) & fine-tune framework with unsloth
 This project leverages the powerful semantic understanding capabilities of OpenAI's models to create a company knowledge base retrieval system. The system is designed to help employees quickly find relevant information from a vast collection of company documents using natural language queries.
 
 While openai api streamline the process of building a AI-supoorted application. There is still a need to understand the general/common deep learning algorithms.
 
 In this repo, I also utilize LangChain to build/develop some ai agent... 
+
+## NEW: Document Analysis and LLM Fine-tuning System
+*January 2025*
+
+## Core Components
+- Interactive document analysis platform (Streamlit + OpenAI API)
+- Local LLM deployment (Ollama + Fine-tuned DeepSeek)
+- Custom model fine-tuning pipeline
+
+## Technical Implementation
+### Fine-tuning Pipeline
+- Used Unsloth's optimized training framework
+- Implemented LoRA adaptation (1-10% parameters)
+- Leveraged PEFT for efficient training
+- Dataset formatting to Alpaca/ShareGPT structure
+- SFTTrainer for supervised fine-tuning
+- DeepSeek-R1 8B base model
+
+### Document Analysis
+- Vector store integration
+- RAG (Retrieval Augmented Generation)
+- Local inference with Ollama
+- Privacy-focused architecture
+
+### Key Technologies
+- Python/Streamlit frontend
+- Unsloth/Transformers for training
+- HuggingFace datasets
+- PEFT/LoRA optimization
+- Vector embeddings
+- Local LLM deployment
 
 ## Notice
 
